@@ -1,5 +1,6 @@
 use std::fs;
 use std::env;
+use std::mem;
 
 #[derive(Debug)]
 
@@ -50,10 +51,50 @@ impl Lexer {
                 value: c.to_string(),
             })
         } else {
-            Err("I DONT UDNERSTAND".to_string())
+            Err("Syntax error!".to_string())
         }
     }
 }
+
+struct Expr {
+    token_stream: Vec<Lexer>,
+    value: i32,
+}
+
+impl Expr {
+    fn eat(&self, token_type: Vec<TokenTypes>) -> Result<bool, String> {
+        for token_pos in 0..token_type.len() - 1 {
+            if mem::discriminant(&token_type[token_pos]) == mem::discriminant(&(self.token_stream[token_pos].token)) {
+                return Err("Syntax error!".to_string())
+            }
+        }
+        
+        Ok(true)
+    }
+
+    fn group_expressions(&mut self, lexer: Lexer) {
+        if let TokenTypes::EOL = lexer.token {
+            if self.eat(vec![TokenTypes::Integer, TokenTypes::PlusSign, TokenTypes::Integer]).unwrap() == true {
+                self.value = self.token_stream[0].value.parse::<i32>().unwrap() + self.token_stream[2].value.parse::<i32>().unwrap();
+                self.token_stream = vec![];
+            }
+        } else {
+            self.token_stream.push(lexer);
+        }
+    }
+}
+
+//fn isdigit(s: &String) -> bool {
+//    let mut isd = true;
+//    for c in s.chars() {
+//        if !c.is_digit(10) {
+//            isd = false;
+//            return isd
+//        }
+//    }
+//
+//    isd
+//}
 
 fn remove_whitespace(code: String) -> String {
     let mut formatted_code = String::new();
@@ -77,11 +118,15 @@ fn read_file() -> String {
 fn main() { 
     let code = remove_whitespace(read_file());
     let mut lexer;
+    let mut expr = Expr{ token_stream: vec![], value: 0 };
     for c in code.chars() {
         lexer = Lexer::identify_token(c).unwrap();
-        println!("{:?}", lexer.token);
+        //println!("{:?}", lexer.token);
+        expr.group_expressions(lexer);
+        //println!("{}", expr.value);
+        //for x in expr.token_stream.iter() {
+        //    println!("{:?}", x.token);
+        //}
     }
-
-    println!("{}", code);
 }
 
